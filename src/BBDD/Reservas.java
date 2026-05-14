@@ -18,13 +18,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 /*
- * Clase LeerReserva
+ * Clase Reservas
  * -------------------
- * Esta ventana muestra todas las reservas en una tabla.
- * Antes había un menú desplegable, pero ahora lo cambiamos
- * por 3 botones: Crear, Modificar y Eliminar.
- *
- * Cada botón hace lo mismo que hacía antes la opción del menú.
+ * Muestra todas las reservas en una tabla.
+ * Tiene 3 botones: Crear, Modificar y Eliminar.
+ * Ahora está adaptada a la tabla REAL "reserva".
  */
 
 public class Reservas extends JFrame {
@@ -33,16 +31,13 @@ public class Reservas extends JFrame {
 	private JPanel contentPane;
 	private JTable tablaReservas;
 
-	// Nombre del usuario (lo puedes cambiar según Login)
-	private String usuarioActual = "UsuarioEjemplo";
-
 	public ConexionMySQL conexion = new ConexionMySQL("root", "", "agencia-viajes");
 
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					LeerReserva frame = new LeerReserva();
+					Reservas frame = new Reservas();
 					frame.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -62,12 +57,6 @@ public class Reservas extends JFrame {
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
 
-		// Etiqueta con el nombre del usuario
-		JLabel lblUsuario = new JLabel("Usuario: " + usuarioActual);
-		lblUsuario.setFont(new Font("Tahoma", Font.BOLD, 14));
-		lblUsuario.setBounds(500, 10, 180, 20);
-		contentPane.add(lblUsuario);
-
 		// Scroll para la tabla
 		JScrollPane scrollPane = new JScrollPane();
 		scrollPane.setBounds(20, 20, 450, 300);
@@ -85,7 +74,6 @@ public class Reservas extends JFrame {
 
 		btnCrear.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				// Abre la ventana para crear una nueva reserva
 				CrearReserva nueva = new CrearReserva();
 				nueva.setVisible(true);
 			}
@@ -101,7 +89,6 @@ public class Reservas extends JFrame {
 		btnModificar.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				// Compruebo si hay una fila seleccionada
 				int fila = tablaReservas.getSelectedRow();
 
 				if (fila == -1) {
@@ -109,13 +96,13 @@ public class Reservas extends JFrame {
 					return;
 				}
 
-				// Obtengo los datos de la reserva seleccionada
+				// Obtengo los datos reales
+				int id = Integer.parseInt(tablaReservas.getValueAt(fila, 0).toString());
 				String destino = tablaReservas.getValueAt(fila, 1).toString();
 				String fecha = tablaReservas.getValueAt(fila, 2).toString();
 				String presupuesto = tablaReservas.getValueAt(fila, 3).toString();
 
-				// Abro la ventana de crear reserva pero con los datos cargados
-				CrearReserva editar = new CrearReserva(destino, fecha, presupuesto);
+				CrearReserva editar = new CrearReserva(id, destino, fecha, presupuesto);
 				editar.setVisible(true);
 			}
 		});
@@ -130,7 +117,6 @@ public class Reservas extends JFrame {
 		btnEliminar.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 
-				// Compruebo si hay una fila seleccionada
 				int fila = tablaReservas.getSelectedRow();
 
 				if (fila == -1) {
@@ -138,28 +124,24 @@ public class Reservas extends JFrame {
 					return;
 				}
 
-				// Obtengo el ID de la reserva
 				int id = Integer.parseInt(tablaReservas.getValueAt(fila, 0).toString());
 
 				try {
 					conexion.conectar();
-					String sql = "DELETE FROM reservas WHERE id=" + id;
+					String sql = "DELETE FROM reserva WHERE id_reserva=" + id;
 					conexion.ejecutarInsertDeleteUpdate(sql);
 					conexion.desconectar();
 				} catch (SQLException ex) {
 					ex.printStackTrace();
 				}
 
-				// Recargo la tabla después de eliminar
 				cargarReservas();
 			}
 		});
 
-		// Cargo las reservas al iniciar la ventana
 		cargarReservas();
 	}
 
-	// Método para cargar todas las reservas en la tabla
 	private void cargarReservas() {
 
 		DefaultTableModel modelo = new DefaultTableModel();
@@ -170,15 +152,15 @@ public class Reservas extends JFrame {
 
 		try {
 			conexion.conectar();
-			String consulta = "SELECT id, destino, fecha, presupuesto FROM reservas";
+			String consulta = "SELECT id_reserva, destino, fecha, presupuesto FROM reserva";
 			ResultSet rs = conexion.ejecutarSelect(consulta);
 
 			while (rs.next()) {
 				Object[] fila = new Object[4];
-				fila[0] = rs.getInt("id");
+				fila[0] = rs.getInt("id_reserva");
 				fila[1] = rs.getString("destino");
 				fila[2] = rs.getString("fecha");
-				fila[3] = rs.getDouble("presupuesto");
+				fila[3] = rs.getInt("presupuesto");
 				modelo.addRow(fila);
 			}
 

@@ -13,14 +13,11 @@ import java.awt.event.ActionEvent;
 import javax.swing.JOptionPane;
 
 /*
- * Clase VentanaReserva
+ * Clase CrearReserva
  * ----------------------
- * Esta ventana sirve para CREAR o MODIFICAR una reserva.
- *
- * - Si se abre con el constructor normal → Crear nueva reserva
- * - Si se abre con el constructor con parámetros → Modificar reserva
- *
- * Los campos se rellenan automáticamente cuando venimos desde LeerReserva.
+ * Sirve para CREAR o EDITAR una reserva.
+ * Si viene sin parámetros → crear
+ * Si viene con parámetros → editar
  */
 
 public class CrearReserva extends JFrame {
@@ -28,14 +25,14 @@ public class CrearReserva extends JFrame {
     private static final long serialVersionUID = 1L;
     private JPanel contentPane;
 
-    // Campos de texto donde el usuario escribe los datos
     protected JTextField textDestino;
     protected JTextField textFecha;
     protected JTextField textPresupuesto;
 
-    /**
-     * Método main para ejecutar esta ventana de forma independiente
-     */
+    private Integer idReservaEditar = null; // si es null → crear
+
+    public ConexionMySQL conexion = new ConexionMySQL("root", "", "agencia-viajes");
+
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
             public void run() {
@@ -49,13 +46,13 @@ public class CrearReserva extends JFrame {
         });
     }
 
-    /**
-     * Constructor PRINCIPAL → Crear nueva reserva
-     */
+    // -----------------------------
+    // CONSTRUCTOR PARA CREAR
+    // -----------------------------
     public CrearReserva() {
 
         setTitle("Crear nueva reserva");
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setBounds(200, 200, 450, 350);
 
         contentPane = new JPanel();
@@ -63,91 +60,113 @@ public class CrearReserva extends JFrame {
         setContentPane(contentPane);
         contentPane.setLayout(null);
 
-        // Título
         JLabel lblTitulo = new JLabel("Nueva Reserva");
         lblTitulo.setFont(new Font("Tahoma", Font.PLAIN, 22));
         lblTitulo.setBounds(130, 10, 200, 30);
         contentPane.add(lblTitulo);
 
-        // Etiqueta destino
         JLabel lblDestino = new JLabel("Destino:");
         lblDestino.setFont(new Font("Tahoma", Font.PLAIN, 16));
         lblDestino.setBounds(40, 70, 100, 20);
         contentPane.add(lblDestino);
 
-        // Campo destino
         textDestino = new JTextField();
         textDestino.setBounds(160, 70, 180, 20);
         contentPane.add(textDestino);
 
-        // Etiqueta fecha
         JLabel lblFecha = new JLabel("Fecha:");
         lblFecha.setFont(new Font("Tahoma", Font.PLAIN, 16));
         lblFecha.setBounds(40, 110, 100, 20);
         contentPane.add(lblFecha);
 
-        // Campo fecha
         textFecha = new JTextField();
         textFecha.setBounds(160, 110, 180, 20);
         contentPane.add(textFecha);
 
-        // Etiqueta presupuesto
         JLabel lblPresupuesto = new JLabel("Presupuesto:");
         lblPresupuesto.setFont(new Font("Tahoma", Font.PLAIN, 16));
         lblPresupuesto.setBounds(40, 150, 120, 20);
         contentPane.add(lblPresupuesto);
 
-        // Campo presupuesto
         textPresupuesto = new JTextField();
         textPresupuesto.setBounds(160, 150, 180, 20);
         contentPane.add(textPresupuesto);
 
-        // Botón para crear o modificar
         JButton btnGuardar = new JButton("Guardar");
         btnGuardar.setBounds(140, 220, 150, 25);
         contentPane.add(btnGuardar);
 
-        /*
-         * Acción del botón Guardar
-         * --------------------------
-         * De momento solo muestra un mensaje.
-         * Más adelante añadiremos INSERT o UPDATE según corresponda.
-         */
         btnGuardar.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-
-                String destino = textDestino.getText();
-                String fecha = textFecha.getText();
-                String presupuesto = textPresupuesto.getText();
-
-                if (destino.isEmpty() || fecha.isEmpty() || presupuesto.isEmpty()) {
-                    JOptionPane.showMessageDialog(null, "Rellena todos los campos");
-                    return;
-                }
-
-                JOptionPane.showMessageDialog(null,
-                        "Datos guardados:\nDestino: " + destino +
-                                "\nFecha: " + fecha +
-                                "\nPresupuesto: " + presupuesto);
+                guardarReserva();
             }
         });
     }
 
-    /**
-     * Constructor SECUNDARIO → Modificar reserva
-     * Recibe los datos desde LeerReserva y los coloca en los campos.
-     */
-    public CrearReserva(String destino, String fecha, String presupuesto) {
+    // -----------------------------
+    // CONSTRUCTOR PARA EDITAR
+    // -----------------------------
+    public CrearReserva(int id, String destino, String fecha, String presupuesto) {
 
-        // Llamo al constructor principal para crear la ventana
-        this();
+        this(); // cargo la ventana normal
 
-        // Cambio el título para que quede claro que estamos editando
         setTitle("Modificar reserva");
 
-        // Relleno los campos con los datos de la reserva seleccionada
+        idReservaEditar = id;
+
         textDestino.setText(destino);
         textFecha.setText(fecha);
         textPresupuesto.setText(presupuesto);
+    }
+
+    // -----------------------------
+    // MÉTODO GUARDAR (INSERT O UPDATE)
+    // -----------------------------
+    private void guardarReserva() {
+
+        String destino = textDestino.getText();
+        String fecha = textFecha.getText();
+        String presupuestoStr = textPresupuesto.getText();
+
+        if (destino.isEmpty() || fecha.isEmpty() || presupuestoStr.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Rellena todos los campos");
+            return;
+        }
+
+        int presupuesto;
+
+        try {
+            presupuesto = Integer.parseInt(presupuestoStr);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(null, "El presupuesto debe ser un número");
+            return;
+        }
+
+        try {
+            conexion.conectar();
+
+            if (idReservaEditar == null) {
+                // INSERT
+                String sql = "INSERT INTO reserva (id_usuario, destino, fecha, presupuesto) "
+                        + "VALUES (1, '" + destino + "', '" + fecha + "', " + presupuesto + ")";
+                conexion.ejecutarInsertDeleteUpdate(sql);
+
+            } else {
+                // UPDATE
+                String sql = "UPDATE reserva SET destino='" + destino + "', fecha='" + fecha
+                        + "', presupuesto=" + presupuesto
+                        + " WHERE id_reserva=" + idReservaEditar;
+                conexion.ejecutarInsertDeleteUpdate(sql);
+            }
+
+            conexion.desconectar();
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        JOptionPane.showMessageDialog(null, "Reserva guardada correctamente");
+
+        dispose(); // cierro la ventana
     }
 }
